@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wine Storage Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0d0b;
+    --surface: #1a1713;
+    --surface2: #221f1a;
+    --surface3: #2a2620;
+    --border: #3a3530;
+    --border2: #4a4540;
+    --gold: #c9a84c;
+    --gold-dim: #8a6f2e;
+    --gold-light: #e8c87a;
+    --red: #8b2a2a;
+    --red-light: #c44;
+    --text: #e8e0d4;
+    --text2: #a09080;
+    --text3: #6a5f52;
+    --green: #4a7c59;
+    --green-light: #6aac79;
+    --linked: #4a6a8a;
+    --linked-light: #6a9aba;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* TOP BAR */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    color: var(--gold);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .winery-tabs {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    flex: 1;
+    scrollbar-width: none;
+  }
+  .winery-tabs::-webkit-scrollbar { display: none; }
+
+  .winery-tab {
+    padding: 6px 16px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    font-size: 13px;
+    cursor: pointer;
+    background: none;
+    color: var(--text2);
+    white-space: nowrap;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .winery-tab:hover { color: var(--text); border-color: var(--border); }
+  .winery-tab.active {
+    background: var(--surface3);
+    color: var(--gold);
+    border-color: var(--gold-dim);
+  }
+
+  .sync-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text3);
+    white-space: nowrap;
+  }
+  .sync-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text3);
+  }
+  .sync-dot.syncing { background: var(--gold); animation: pulse 1s infinite; }
+  .sync-dot.ok { background: var(--green-light); }
+  .sync-dot.error { background: var(--red-light); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* MAIN LAYOUT */
+  .main { display: flex; height: calc(100vh - 56px); }
+
+  /* SKU SIDEBAR */
+  .sku-sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px 12px;
+  }
+
+  .sidebar-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    text-transform: uppercase;
+    padding: 0 4px;
+    margin-bottom: 12px;
+  }
+
+  .sku-item {
+    padding: 8px 10px;
+    border-radius: 4px;
+    margin-bottom: 3px;
+    cursor: default;
+    border: 1px solid transparent;
+    transition: all 0.1s;
+  }
+  .sku-item:hover { background: var(--surface2); border-color: var(--border); }
+
+  .sku-name {
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .sku-vintage { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+  .sku-qty {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--gold);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .sku-sub { font-size: 11px; color: var(--text3); }
+
+  /* WAREHOUSE AREA */
+  .warehouse {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+  }
+
+  .row-section {
+    margin-bottom: 32px;
+  }
+
+  .row-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .row-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 4px 10px;
+  }
+
+  .row-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .row-stats {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* STACK */
+  .stack {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .stack.drag-over { border-color: var(--gold); }
+  .stack.drag-source { opacity: 0.4; }
+
+  .stack-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .stack-drag-handle {
+    cursor: grab;
+    color: var(--text3);
+    font-size: 14px;
+    padding: 0 4px;
+    user-select: none;
+  }
+  .stack-drag-handle:active { cursor: grabbing; }
+
+  .stack-label { letter-spacing: 0.08em; }
+  .stack-count { margin-left: auto; }
+
+  /* PALLET */
+  .pallet-row {
+    display: grid;
+    grid-template-columns: 28px 90px 60px 1fr 70px 32px 32px;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    position: relative;
+  }
+  .pallet-row:last-child { border-bottom: none; }
+  .pallet-row:hover { background: var(--surface2); }
+  .pallet-row.linked { background: rgba(74, 106, 138, 0.08); }
+  .pallet-row.linked-first { border-top: 2px solid var(--linked); }
+  .pallet-row.linked-last { border-bottom: 2px solid var(--linked) !important; }
+  .pallet-row.linked-middle { border-top: none; border-bottom: none; }
+
+  .pallet-pos {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  .pallet-input {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 3px 6px;
+    width: 100%;
+    transition: all 0.1s;
+  }
+  .pallet-input:hover { border-color: var(--border2); background: var(--surface3); }
+  .pallet-input:focus { outline: none; border-color: var(--gold-dim); background: var(--surface3); color: var(--gold-light); }
+  .pallet-input.desc { font-family: 'DM Sans', sans-serif; font-size: 13px; }
+
+  .pallet-qty {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    color: var(--gold);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 3px 6px;
+    width: 100%;
+    text-align: right;
+    transition: all 0.1s;
+  }
+  .pallet-qty:hover { border-color: var(--border2); background: var(--surface3); }
+  .pallet-qty:focus { outline: none; border-color: var(--gold-dim); background: var(--surface3); }
+
+  .link-btn {
+    width: 26px; height: 26px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .link-btn:hover { border-color: var(--linked-light); color: var(--linked-light); }
+  .link-btn.linked { background: rgba(74,106,138,0.2); border-color: var(--linked-light); color: var(--linked-light); }
+
+  .delete-btn {
+    width: 26px; height: 26px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .delete-btn:hover { border-color: var(--red-light); color: var(--red-light); }
+
+  /* ADD PALLET */
+  .add-pallet-btn {
+    width: 100%;
+    padding: 7px;
+    background: transparent;
+    border: none;
+    border-top: 1px dashed var(--border);
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .add-pallet-btn:hover { color: var(--gold); background: var(--surface2); }
+
+  /* ADD STACK */
+  .add-stack-btn {
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    margin-bottom: 10px;
+  }
+  .add-stack-btn:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+  /* COLUMN HEADERS */
+  .col-headers {
+    display: grid;
+    grid-template-columns: 28px 90px 60px 1fr 70px 32px 32px;
+    gap: 6px;
+    padding: 4px 12px;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  /* LOADING */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    gap: 16px;
+    color: var(--text3);
+  }
+  .loading-spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* CONFIG SCREEN */
+  .config-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px;
+    gap: 24px;
+  }
+
+  .config-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 32px;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .config-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+  .config-sub { color: var(--text2); font-size: 13px; margin-bottom: 24px; line-height: 1.6; }
+
+  .config-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; font-family: 'DM Mono', monospace; letter-spacing: 0.06em; }
+
+  .config-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    transition: border-color 0.15s;
+  }
+  .config-input:focus { outline: none; border-color: var(--gold-dim); }
+
+  .config-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--gold-dim);
+    border: none;
+    border-radius: 4px;
+    color: var(--bg);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .config-btn:hover { background: var(--gold); }
+
+  .error-msg { color: var(--red-light); font-size: 12px; margin-top: -8px; margin-bottom: 12px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--text);
+    z-index: 999;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { border-color: var(--green); color: var(--green-light); }
+  .toast.error { border-color: var(--red-light); color: var(--red-light); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .pallet-group-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-family: 'DM Mono', monospace;
+    background: rgba(74,106,138,0.25);
+    color: var(--linked-light);
+    border-radius: 3px;
+    padding: 1px 5px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<!-- CONFIG SCREEN -->
+<div id="config-screen" class="config-screen" style="display:none;">
+  <div class="config-card">
+    <div class="config-title">Wine Storage</div>
+    <div class="config-sub">Connect your Google Sheet to get started. You'll need your Sheet ID and API key.</div>
+
+    <div class="config-label">GOOGLE SHEET ID</div>
+    <input class="config-input" id="cfg-sheet-id" placeholder="1r1O1MaTuH3bhj7NFqwAK_..." />
+
+    <div class="config-label">API KEY</div>
+    <input class="config-input" id="cfg-api-key" placeholder="AIzaSy..." />
+
+    <div class="error-msg" id="cfg-error" style="display:none;"></div>
+
+    <button class="config-btn" onclick="saveConfig()">Connect Sheet</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none;">
+  <div class="topbar">
+    <div class="logo">🍷 Wine Storage</div>
+    <div class="winery-tabs" id="winery-tabs"></div>
+    <div class="sync-status">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-label">—</span>
+    </div>
+    <button onclick="showConfig()" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:4px 10px;cursor:pointer;font-size:11px;font-family:'DM Mono',monospace;">⚙ Settings</button>
+  </div>
+
+  <div class="main">
+    <div class="sku-sidebar">
+      <div class="sidebar-title">SKU Overview</div>
+      <div id="sku-list"></div>
+    </div>
+    <div class="warehouse" id="warehouse">
+      <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <span>Loading sheet data...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let SHEET_ID = '';
+let API_KEY = '';
+let sheets = []; // [{name, gid}]
+let activeSheet = null;
+let sheetData = {}; // sheetName -> parsed data
+let saveTimer = null;
+let dragSrcStack = null;
+let dragSrcRow = null;
+
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+function loadConfig() {
+  SHEET_ID = localStorage.getItem('ws_sheet_id') || '';
+  API_KEY = localStorage.getItem('ws_api_key') || '';
+  return SHEET_ID && API_KEY;
+}
+
+function saveConfig() {
+  const sid = document.getElementById('cfg-sheet-id').value.trim();
+  const ak = document.getElementById('cfg-api-key').value.trim();
+  if (!sid || !ak) { showError('cfg-error', 'Both fields are required.'); return; }
+  SHEET_ID = sid;
+  API_KEY = ak;
+  localStorage.setItem('ws_sheet_id', SHEET_ID);
+  localStorage.setItem('ws_api_key', API_KEY);
+  document.getElementById('config-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  init();
+}
+
+function showConfig() {
+  document.getElementById('cfg-sheet-id').value = SHEET_ID;
+  document.getElementById('cfg-api-key').value = API_KEY;
+  document.getElementById('config-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ─── API ─────────────────────────────────────────────────────────────────────
+async function fetchSheetMeta() {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?key=${API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to load sheet metadata');
+  return res.json();
+}
+
+async function fetchSheetValues(sheetName) {
+  const range = encodeURIComponent(`${sheetName}`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load ${sheetName}`);
+  const data = await res.json();
+  return data.values || [];
+}
+
+async function writeSheetValues(sheetName, values) {
+  const range = encodeURIComponent(sheetName);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?valueInputOption=RAW&key=${API_KEY}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ range: sheetName, majorDimension: 'ROWS', values })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'Write failed');
+  }
+  return res.json();
+}
+
+// ─── PARSE SHEET ─────────────────────────────────────────────────────────────
+function parseSheet(rows) {
+  // Find where SKU overview ends and warehouse rows begin
+  // SKU overview: top rows with product data (col 0 non-empty = prod IDs)
+  // Warehouse: rows starting with "ROW" marker in col 2
+
+  const skus = [];
+  const warehouseRows = []; // [{rowNum, stacks: [[pallets]]}]
+
+  let inWarehouse = false;
+  let currentRowNum = null;
+  let currentStacks = [];
+  let currentStack = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const c0 = (r[0] || '').toString().trim();
+    const c1 = (r[1] || '').toString().trim();
+    const c2 = (r[2] || '').toString().trim();
+    const c3 = (r[3] || '').toString().trim();
+    const c4 = (r[4] || '').toString().trim();
+
+    // Detect ROW marker
+    if (c2 === 'ROW' && c3 !== '') {
+      inWarehouse = true;
+      if (currentRowNum !== null) {
+        if (currentStack.length) currentStacks.push(currentStack);
+        warehouseRows.push({ rowNum: currentRowNum, stacks: currentStacks });
+      }
+      currentRowNum = c3;
+      currentStacks = [];
+      currentStack = [];
+      continue;
+    }
+
+    if (!inWarehouse) {
+      // Parse SKU overview row
+      const prodId = c0 || c1;
+      if (prodId && c3 && c4 && c3 !== 'Description' && c3 !== 'TOTAL (C)') {
+        skus.push({
+          prodId: c1 || '',
+          vintage: c2 || '',
+          description: c3,
+          qty: parseInt(c4.replace(/,/g,'')) || 0,
+          packSize: (r[7] || '').toString().trim(),
+          pallets: parseFloat((r[14] || '0').toString()) || 0
+        });
+      }
+      continue;
+    }
+
+    // Warehouse section
+    const isEmpty = !c1 && !c2 && !c3 && !c4;
+    if (isEmpty) {
+      if (currentStack.length) { currentStacks.push(currentStack); currentStack = []; }
+      continue;
+    }
+
+    if (c3 || c4) {
+      currentStack.push({
+        prodId: c1,
+        vintage: c2,
+        description: c3,
+        qty: c4,
+        linkedTo: null, // will be set by user
+        _rowIdx: i
+      });
+    }
+  }
+
+  // Flush last
+  if (currentRowNum !== null) {
+    if (currentStack.length) currentStacks.push(currentStack);
+    warehouseRows.push({ rowNum: currentRowNum, stacks: currentStacks });
+  }
+
+  return { skus, warehouseRows };
+}
+
+// ─── SERIALIZE BACK TO SHEET ──────────────────────────────────────────────────
+function serializeSheet(parsed, originalRows) {
+  // Find the first ROW marker to know where warehouse starts
+  let warehouseStart = -1;
+  for (let i = 0; i < originalRows.length; i++) {
+    const c2 = (originalRows[i][2] || '').toString().trim();
+    if (c2 === 'ROW') { warehouseStart = i; break; }
+  }
+
+  // Keep original header/SKU rows intact
+  const headerRows = warehouseStart >= 0 ? originalRows.slice(0, warehouseStart) : originalRows;
+
+  // Build warehouse rows
+  const warehouseRows = [];
+  for (const row of parsed.warehouseRows) {
+    warehouseRows.push(['', '', 'ROW', row.rowNum, '', '', '', '', '', '', '', '', '', '', '']);
+    warehouseRows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+    for (const stack of row.stacks) {
+      for (const pallet of stack) {
+        warehouseRows.push(['', pallet.prodId, pallet.vintage, pallet.description, pallet.qty, '', '', '', '', '', '', '', '', '', '']);
+      }
+      warehouseRows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+    }
+    warehouseRows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+  }
+
+  return [...headerRows, ...warehouseRows];
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderSKUs(skus) {
+  const list = document.getElementById('sku-list');
+  list.innerHTML = '';
+  skus.filter(s => s.description && s.qty > 0).sort((a,b) => b.qty - a.qty).forEach(sku => {
+    const div = document.createElement('div');
+    div.className = 'sku-item';
+    div.innerHTML = `
+      <div class="sku-name">${sku.description}</div>
+      <div class="sku-vintage">${sku.vintage || 'NV'} · ${sku.packSize || ''}</div>
+      <div class="sku-qty">${sku.qty.toLocaleString()} <span class="sku-sub">cases</span></div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function renderWarehouse(parsed, sheetName) {
+  const wh = document.getElementById('warehouse');
+  wh.innerHTML = '';
+
+  if (!parsed.warehouseRows.length) {
+    wh.innerHTML = '<div class="loading"><span style="color:var(--text3)">No warehouse rows found in this sheet.</span></div>';
+    return;
+  }
+
+  parsed.warehouseRows.forEach((row, rowIdx) => {
+    const section = document.createElement('div');
+    section.className = 'row-section';
+
+    const totalPallets = row.stacks.reduce((a, s) => a + s.length, 0);
+    section.innerHTML = `
+      <div class="row-header">
+        <div class="row-label">Row ${row.rowNum}</div>
+        <div class="row-line"></div>
+        <div class="row-stats">${row.stacks.length} stack${row.stacks.length !== 1 ? 's' : ''} · ${totalPallets} pallet${totalPallets !== 1 ? 's' : ''}</div>
+      </div>
+    `;
+
+    const colHeaders = document.createElement('div');
+    colHeaders.className = 'col-headers';
+    colHeaders.innerHTML = '<span>Pos</span><span>Prod ID</span><span>Vintage</span><span>Description</span><span style="text-align:right">Qty</span><span></span><span></span>';
+    section.appendChild(colHeaders);
+
+    row.stacks.forEach((stack, stackIdx) => {
+      const stackEl = buildStack(stack, rowIdx, stackIdx, sheetName, parsed);
+      section.appendChild(stackEl);
+    });
+
+    // Add stack button
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-stack-btn';
+    addBtn.textContent = '+ Add stack';
+    addBtn.onclick = () => {
+      parsed.warehouseRows[rowIdx].stacks.push([{ prodId:'', vintage:'', description:'', qty:'' }]);
+      renderWarehouse(parsed, sheetName);
+      scheduleSave(sheetName, parsed);
+    };
+    section.appendChild(addBtn);
+
+    wh.appendChild(section);
+  });
+}
+
+function buildStack(stack, rowIdx, stackIdx, sheetName, parsed) {
+  const div = document.createElement('div');
+  div.className = 'stack';
+  div.draggable = true;
+  div.dataset.rowIdx = rowIdx;
+  div.dataset.stackIdx = stackIdx;
+
+  div.ondragstart = e => {
+    dragSrcRow = rowIdx;
+    dragSrcStack = stackIdx;
+    div.classList.add('drag-source');
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  div.ondragend = () => {
+    document.querySelectorAll('.stack').forEach(s => s.classList.remove('drag-source','drag-over'));
+  };
+  div.ondragover = e => {
+    e.preventDefault();
+    if (dragSrcRow === rowIdx && dragSrcStack !== stackIdx) div.classList.add('drag-over');
+  };
+  div.ondragleave = () => div.classList.remove('drag-over');
+  div.ondrop = e => {
+    e.preventDefault();
+    div.classList.remove('drag-over');
+    if (dragSrcRow === null || dragSrcStack === null) return;
+    if (dragSrcRow === rowIdx && dragSrcStack !== stackIdx) {
+      const stacks = parsed.warehouseRows[rowIdx].stacks;
+      const [moved] = stacks.splice(dragSrcStack, 1);
+      stacks.splice(stackIdx, 0, moved);
+      dragSrcStack = null; dragSrcRow = null;
+      renderWarehouse(parsed, sheetName);
+      scheduleSave(sheetName, parsed);
+    }
+  };
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.className = 'stack-header';
+  hdr.innerHTML = `<span class="stack-drag-handle" title="Drag to reorder">⠿⠿</span><span class="stack-label">Stack ${stackIdx + 1}</span><span class="stack-count">${stack.length} pallet${stack.length !== 1 ? 's' : ''} · bottom → top ↑</span>`;
+  div.appendChild(hdr);
+
+  // Pallets
+  stack.forEach((pallet, palletIdx) => {
+    const row = buildPalletRow(pallet, palletIdx, stack, rowIdx, stackIdx, sheetName, parsed);
+    div.appendChild(row);
+  });
+
+  // Add pallet
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-pallet-btn';
+  addBtn.textContent = '+ Add pallet to stack';
+  addBtn.onclick = () => {
+    parsed.warehouseRows[rowIdx].stacks[stackIdx].push({ prodId:'', vintage:'', description:'', qty:'' });
+    renderWarehouse(parsed, sheetName);
+    scheduleSave(sheetName, parsed);
+  };
+  div.appendChild(addBtn);
+
+  return div;
+}
+
+function buildPalletRow(pallet, palletIdx, stack, rowIdx, stackIdx, sheetName, parsed) {
+  const pos = palletIdx + 1;
+  const isLinked = pallet.linkedTo !== null;
+  const linkedGroup = pallet.linkedTo;
+
+  // Determine linked styling
+  let linkedClass = '';
+  if (isLinked) {
+    const prevLinked = palletIdx > 0 && stack[palletIdx-1].linkedTo === linkedGroup;
+    const nextLinked = palletIdx < stack.length-1 && stack[palletIdx+1].linkedTo === linkedGroup;
+    if (!prevLinked && nextLinked) linkedClass = 'linked linked-first';
+    else if (prevLinked && nextLinked) linkedClass = 'linked linked-middle';
+    else if (prevLinked && !nextLinked) linkedClass = 'linked linked-last';
+    else linkedClass = 'linked linked-first linked-last';
+  }
+
+  const div = document.createElement('div');
+  div.className = `pallet-row ${linkedClass}`;
+
+  const linkLabel = isLinked ? `<span class="pallet-group-badge">P${linkedGroup}</span>` : '';
+
+  div.innerHTML = `
+    <div class="pallet-pos">${pos}</div>
+    <input class="pallet-input" value="${pallet.prodId||''}" placeholder="Prod ID" title="Product ID" />
+    <input class="pallet-input" value="${pallet.vintage||''}" placeholder="Vintage" />
+    <input class="pallet-input desc" value="${pallet.description||''}" placeholder="Description" />${linkLabel}
+    <input class="pallet-qty" type="number" value="${pallet.qty||''}" placeholder="0" min="0" />
+    <button class="link-btn ${isLinked ? 'linked' : ''}" title="${isLinked ? 'Unlink from pallet group' : 'Link to pallet above (same physical pallet)'}">⛓</button>
+    <button class="delete-btn" title="Remove pallet">✕</button>
+  `;
+
+  const [, prodInput, vintInput, descInput, , qtyInput, linkBtn, delBtn] = div.children;
+
+  function onChange() {
+    pallet.prodId = prodInput.value;
+    pallet.vintage = vintInput.value;
+    pallet.description = descInput.value;
+    pallet.qty = qtyInput.value;
+    scheduleSave(sheetName, parsed);
+  }
+
+  [prodInput, vintInput, descInput, qtyInput].forEach(inp => {
+    inp.addEventListener('change', onChange);
+    inp.addEventListener('blur', onChange);
+  });
+
+  linkBtn.addEventListener('click', () => {
+    if (isLinked) {
+      pallet.linkedTo = null;
+    } else {
+      // Link to pallet above, assign group number
+      const above = palletIdx > 0 ? stack[palletIdx-1] : null;
+      if (above && above.linkedTo !== null) {
+        pallet.linkedTo = above.linkedTo;
+      } else if (above) {
+        const newGroup = Date.now() % 10000;
+        above.linkedTo = newGroup;
+        pallet.linkedTo = newGroup;
+      } else {
+        const newGroup = Date.now() % 10000;
+        pallet.linkedTo = newGroup;
+      }
+    }
+    renderWarehouse(parsed, sheetName);
+    scheduleSave(sheetName, parsed);
+  });
+
+  delBtn.addEventListener('click', () => {
+    stack.splice(palletIdx, 1);
+    if (stack.length === 0) {
+      parsed.warehouseRows[rowIdx].stacks.splice(stackIdx, 1);
+    }
+    renderWarehouse(parsed, sheetName);
+    scheduleSave(sheetName, parsed);
+  });
+
+  return div;
+}
+
+// ─── SYNC ─────────────────────────────────────────────────────────────────────
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot ' + state;
+  lbl.textContent = label;
+}
+
+function scheduleSave(sheetName, parsed) {
+  setSyncStatus('syncing', 'Saving...');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => doSave(sheetName, parsed), 1500);
+}
+
+async function doSave(sheetName, parsed) {
+  try {
+    const originalRows = sheetData[sheetName + '_raw'] || [];
+    const newValues = serializeSheet(parsed, originalRows);
+    await writeSheetValues(sheetName, newValues);
+    sheetData[sheetName + '_raw'] = newValues;
+    setSyncStatus('ok', 'Saved');
+    showToast('Saved to Google Sheets', 'success');
+  } catch(e) {
+    setSyncStatus('error', 'Save failed');
+    showToast('Save failed: ' + e.message, 'error');
+  }
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function loadSheet(sheetName) {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('warehouse').innerHTML = '';
+  document.getElementById('warehouse').appendChild(document.getElementById('loading'));
+
+  try {
+    setSyncStatus('syncing', 'Loading...');
+    const rows = await fetchSheetValues(sheetName);
+    sheetData[sheetName + '_raw'] = rows;
+    const parsed = parseSheet(rows);
+    sheetData[sheetName + '_parsed'] = parsed;
+
+    document.getElementById('loading').style.display = 'none';
+    renderSKUs(parsed.skus);
+    renderWarehouse(parsed, sheetName);
+    setSyncStatus('ok', 'Connected');
+  } catch(e) {
+    document.getElementById('loading').innerHTML = `<span style="color:var(--red-light)">Error: ${e.message}</span>`;
+    setSyncStatus('error', 'Error');
+  }
+}
+
+async function init() {
+  try {
+    setSyncStatus('syncing', 'Connecting...');
+    const meta = await fetchSheetMeta();
+    sheets = meta.sheets.map(s => ({ name: s.properties.title, gid: s.properties.sheetId }));
+
+    // Render winery tabs
+    const tabs = document.getElementById('winery-tabs');
+    tabs.innerHTML = '';
+    sheets.forEach((sheet, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'winery-tab' + (i === 0 ? ' active' : '');
+      btn.textContent = sheet.name;
+      btn.onclick = () => {
+        document.querySelectorAll('.winery-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+        activeSheet = sheet.name;
+        loadSheet(sheet.name);
+      };
+      tabs.appendChild(btn);
+    });
+
+    activeSheet = sheets[0]?.name;
+    if (activeSheet) await loadSheet(activeSheet);
+  } catch(e) {
+    document.getElementById('warehouse').innerHTML = `<div class="loading"><span style="color:var(--red-light)">Could not connect: ${e.message}<br><br><button onclick="showConfig()" style="background:none;border:1px solid var(--red-light);color:var(--red-light);padding:8px 16px;border-radius:4px;cursor:pointer;font-family:inherit;">Check Settings</button></span></div>`;
+    setSyncStatus('error', 'Not connected');
+  }
+}
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+if (loadConfig()) {
+  document.getElementById('app').style.display = 'block';
+  init();
+} else {
+  document.getElementById('config-screen').style.display = 'flex';
+  document.getElementById('cfg-sheet-id').value = '';
+  document.getElementById('cfg-api-key').value = '';
+}
+</script>
+</body>
+</html>
